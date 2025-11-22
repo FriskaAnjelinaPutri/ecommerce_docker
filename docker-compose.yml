@@ -1,0 +1,32 @@
+services:
+  product-services:
+    build:
+      context: ./product-services
+    ports:
+      - "3000:3000"
+    container_name: product-services
+    restart: always
+
+  cart-services:
+    build:
+      context: ./cart_services
+    ports:
+      - "8000:8000"
+    container_name: cart-services
+    restart: always
+
+  review_service:
+    build:
+      context: ./review_service
+    ports:
+      - "5002:5002"
+    container_name: review-service
+    restart: always
+
+  user_service:
+    build:
+      context: ./user_service
+    ports:
+      - "4000:4000"
+    container_name: user-service
+    restart: always
