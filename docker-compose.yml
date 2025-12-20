@@ -1,32 +1,43 @@
 services:
-  product-services:
-    build:
-      context: ./product-services
-    ports:
-      - "3000:3000"
+  product-service:
+    build: ./product-services
+    ports: 
+      - "${PRODUCT_SERVICE_PORT}:3000"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${PRODUCT_DB_HOST}
+      DB_NAME: ${PRODUCT_DB_NAME}
+      DB_USER: ${PRODUCT_DB_USER}
+      DB_PASSWORD: ${PRODUCT_DB_PASSWORD}
     container_name: product-services
     restart: always
+    depends_on:
+      - product-db
+  
+  product-db:
+    image: mysql:8.0.36
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD : ${PRODUCT_DB_PASSWORD}
+      MYSQL_DATABASE : ${PRODUCT_DB_NAME}
+    volumes:
+      - product-db-data:/var/lib/mysql
+  
+  # cart-service:
+  #   build: ./cart_services
+  #   ports:
+  #     - "8000:8000"
+  #   container_name: cart_services
+  #   restart: always
 
-  cart-services:
-    build:
-      context: ./cart_services
-    ports:
-      - "8000:8000"
-    container_name: cart-services
-    restart: always
+  # review-service:
+  #   build: ./review_service
+  #   ports:
+  #     - "5002:5002"
+  #   container_name: review_service
+  #   restart: always
 
-  review_service:
-    build:
-      context: ./review_service
-    ports:
-      - "5002:5002"
-    container_name: review-service
-    restart: always
-
-  user_service:
-    build:
-      context: ./user_service
-    ports:
-      - "4000:4000"
-    container_name: user-service
-    restart: always
+volumes:
+  product-db-data:
