@@ -20,10 +20,22 @@ services:
     env_file:
       - .env
     environment:
-      MYSQL_ROOT_PASSWORD : ${PRODUCT_DB_PASSWORD}
-      MYSQL_DATABASE : ${PRODUCT_DB_NAME}
+      MYSQL_ROOT_PASSWORD: ${PRODUCT_DB_PASSWORD}
+      MYSQL_DATABASE: ${PRODUCT_DB_NAME}
     volumes:
       - product-db-data:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: product-db
+      MYSQL_ROOT_PASSWORD: ${PRODUCT_DB_PASSWORD}
+    depends_on:
+      - product-db
   
   # cart-service:
   #   build: ./cart_services
@@ -39,5 +51,51 @@ services:
   #   container_name: review_service
   #   restart: always
 
+  review_service:
+    build: ./review_service
+    ports:
+      - "5002:5002"
+    container_name: review_service
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      - mongo-db
+    environment:
+      MONGO_URI: mongodb://admin:admin123@mongo-db:27017/reviewdb?authSource=admin
+
+  mongo-db:
+    image: mongo:latest
+    container_name: mongo-db
+    env_file:
+      - .env
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB_NAME}
+    ports:
+      - "${MONGO_PORT}:27017"
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+
+  mongo-express:
+
+    image: mongo-express:1.0.2
+    container_name: mongo-express
+    env_file:
+      - .env
+    environment:
+      ME_CONFIG_BASICAUTH: "true"
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-db:27017/?authSource=admin
+    ports:
+      - "${MONGO_EXPRESS_PORT}:8081"
+    restart: always
+    depends_on:
+      - mongo-db 
+
 volumes:
-  product-db-data:
+    product-db-data:
+    mongo-data:
