@@ -1,22 +1,28 @@
+
+
 services:
+  # =========================
+  # PRODUCT SERVICE (MySQL)
+  # =========================
   product-service:
     build: ./product-services
-    ports: 
+    container_name: product-services
+    ports:
       - "${PRODUCT_SERVICE_PORT}:3000"
     env_file:
       - .env
     environment:
-      DB_HOST: ${PRODUCT_DB_HOST}
+      DB_HOST: product-db
       DB_NAME: ${PRODUCT_DB_NAME}
       DB_USER: ${PRODUCT_DB_USER}
       DB_PASSWORD: ${PRODUCT_DB_PASSWORD}
-    container_name: product-services
-    restart: always
     depends_on:
       - product-db
-  
+    restart: always
+
   product-db:
     image: mysql:8.0.36
+    container_name: product-db
     env_file:
       - .env
     environment:
@@ -24,11 +30,11 @@ services:
       MYSQL_DATABASE: ${PRODUCT_DB_NAME}
     volumes:
       - product-db-data:/var/lib/mysql
+    restart: always
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: phpmyadmin
-    restart: always
     ports:
       - "8080:80"
     environment:
@@ -36,33 +42,23 @@ services:
       MYSQL_ROOT_PASSWORD: ${PRODUCT_DB_PASSWORD}
     depends_on:
       - product-db
-  
-  # cart-service:
-  #   build: ./cart_services
-  #   ports:
-  #     - "8000:8000"
-  #   container_name: cart_services
-  #   restart: always
+    restart: always
 
-  # review-service:
-  #   build: ./review_service
-  #   ports:
-  #     - "5002:5002"
-  #   container_name: review_service
-  #   restart: always
-
+  # =========================
+  # REVIEW SERVICE (MongoDB)
+  # =========================
   review_service:
     build: ./review_service
+    container_name: review_service
     ports:
       - "5002:5002"
-    container_name: review_service
-    restart: always
     env_file:
       - .env
+    environment:
+      MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-db:27017/${MONGO_DB_NAME}?authSource=admin
     depends_on:
       - mongo-db
-    environment:
-      MONGO_URI: mongodb://admin:admin123@mongo-db:27017/reviewdb?authSource=admin
+    restart: always
 
   mongo-db:
     image: mongo:latest
@@ -80,7 +76,6 @@ services:
     restart: always
 
   mongo-express:
-
     image: mongo-express:1.0.2
     container_name: mongo-express
     env_file:
@@ -92,10 +87,55 @@ services:
       ME_CONFIG_MONGODB_URL: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo-db:27017/?authSource=admin
     ports:
       - "${MONGO_EXPRESS_PORT}:8081"
-    restart: always
     depends_on:
-      - mongo-db 
+      - mongo-db
+    restart: always
 
+  # USER SERVICE (PostgreSQL)
+  user-db:
+    image: postgres:15
+    container_name: user-db
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${USER_DB_USER}
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD}
+      POSTGRES_DB: ${USER_DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+      - ./user_service/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${USER_DB_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+
+  user_service:
+    build: ./user_service
+    container_name: user_service
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    environment:
+      DB_HOST: user-db
+      DB_PORT: 5432
+      DB_USER: ${USER_DB_USER}
+      DB_PASSWORD: ${USER_DB_PASSWORD}
+      DB_NAME: ${USER_DB_NAME}
+    depends_on:
+      user-db:
+        condition: service_healthy
+    restart: always
+
+# =========================
+# VOLUMES
+# =========================
 volumes:
-    product-db-data:
-    mongo-data:
+  product-db-data:
+  mongo-data:
+  user-db-data:
